@@ -1,0 +1,58 @@
+# 🔹 Archivos de Python (Django)
+__pycache__/
+*.py[cod]
+*.sqlite3
+*.log
+*.pot
+*.pyc
+*.pyo
+db.sqlite3
+*.env
+.env
+venv/
+.envrc
+.mypy_cache/
+.pytest_cache/
+__snapshots__/
+
+# 🔹 Archivos de Django (Migraciones y configuraciones)
+*.swp
+media/
+static/
+migrations/
+node_modules/
+celerybeat-schedule
+.DS_Store
+
+# 🔹 Archivos de React
+node_modules/
+*.lock
+yarn-error.log
+package-lock.json
+npm-debug.log*
+public/static/
+build/
+dist/
+.cache/
+coverage/
+*.map
+
+# 🔹 Configuraciones de IDEs
+.vscode/
+.idea/
+*.iml
+
+# 🔹 Archivos de Docker (si usas Docker)
+docker-compose.override.yml
+*.pid
+
+# 🔹 Archivos de Git relacionados a seguridad
+.git/
+*.pem
+*.key
+*.crt
+*.p12
+
+# 🔹 Archivos de dependencias
+Pipfile
+Pipfile.lock

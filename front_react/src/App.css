@@ -1,0 +1,113 @@
+.tableamazon {
+  border: 1px solid white;
+  border-radius: 15px;
+  width: 100%;
+  max-width: 800px;
+  margin: 10px;
+}
+
+.tableamazon th {
+  background-color: burlywood;
+  text-align: center;
+  border-bottom: 1px solid #5e5b5b;
+  font-family: 'Roboto', sans-serif;
+  padding: 10px;
+}
+
+.tableamazon td {
+  text-align: center;
+  border-bottom: 1px solid #5e5b5b;
+  font-family: 'Roboto', sans-serif;
+  padding: 10px;
+}
+
+.tableamazon tr:hover {
+  background-color: beige;
+}
+
+
+
+.parent-container {
+  display: flex;              /* Activa Flexbox */
+  flex-direction: row;        /* Alinea los elementos horizontalmente */
+  justify-content: space-between; /* Opcional: espacio uniforme entre contenedores */
+  gap: 20px;                  /* Espacio entre cada contenedor */
+  padding: 20px;
+}
+
+.container {
+  flex: 1;                    /* Cada contenedor ocupa el mismo ancho */
+  border: 1px solid #ccc;
+  padding: 10px;
+  box-shadow: 2px 2px 5px rgba(0,0,0,0.1); /* Estilo opcional */
+}
+
+.footer {
+  clear: both;
+  position: relative;
+  bottom: 0;
+  width: 100%;
+  background-color: #333;
+  color: white;
+  text-align: center;
+  padding: 10px;
+}
+.button {
+  background-color: #4CAF50;
+  border: none;
+  color: white;
+  padding: 10px 20px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin: 4px 2px;
+  cursor: pointer;
+}
+.searcher {
+  width: 30%;
+  padding: 8px;
+  margin: 8px;
+  display: inline-block;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+}
+
+ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: #333;
+}
+
+li {
+  float: left;
+}
+
+li a {
+  display: block;
+  color: white;
+  text-align: center;
+  padding: 14px 16px;
+  text-decoration: none;
+}
+
+/* Change the link color to #111 (black) on hover */
+li a:hover {
+  background-color: #111;
+}
+
+@media (max-width: 768px) {
+  .tableamazon {
+    font-size: 14px;
+  }
+  .tableamazon th, .tableamazon td {
+    padding: 5px;
+  }
+  
+  .container1, .container2 {
+    width: 100%;
+    float: none;
+  }
+}
