@@ -27,6 +27,9 @@ packaging==24.2
 pandas==2.2.3
 pillow==11.2.1
 propcache==0.3.1
+psycopg==3.2.7
+psycopg-binary==3.2.7
+psycopg2-binary==2.9.10
 pycares==4.6.1
 pycparser==2.22
 PyJWT==2.10.1
