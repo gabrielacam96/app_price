@@ -60,4 +60,5 @@ jobs:
       - name: Run React tests
         run: |
           cd front_react
-          npm test -- --watchAll=false
+          npx vitest run
+
