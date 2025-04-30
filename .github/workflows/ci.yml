@@ -54,7 +54,6 @@ jobs:
 
       - name: Install frontend dependencies
         run: |
-          cd front_react
           npm ci
 
       - name: Run React tests
