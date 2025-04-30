@@ -9,7 +9,9 @@ __pycache__/
 db.sqlite3
 *.env
 .env
+.env/
 venv/
+env/
 .envrc
 .mypy_cache/
 .pytest_cache/
