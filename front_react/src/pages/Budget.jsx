@@ -1,30 +1,28 @@
-import React, { useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, TextField, Button } from "@mui/material";
 
+import axiosPrivate from "../hooks/axiosPrivate";
 const ProductoTabla = () => {
-  const productos = [
-    {
-      "titulo": "Oso de Peluche",
-      "imagen": "https://example.com/oso.jpg",
-      "rangos": [
-        { "rango_unidades": "20-100", "rango_precio": "30", "coste_envio": "5" },
-        { "rango_unidades": "100-200", "rango_precio": "25", "coste_envio": "4" }
-      ]
-    },
-    {
-      "titulo": "Robot de Juguete",
-      "imagen": "https://example.com/robot.jpg",
-      "rangos": [
-        { "rango_unidades": "10-50", "rango_precio": "40", "coste_envio": "6" },
-        { "rango_unidades": "51-100", "rango_precio": "35", "coste_envio": "5" }
-      ]
-    }
-  ];
 
+
+  const [selectedProducts, setSelectedProducts] = useState([]);
+  
   const [cantidades, setCantidades] = useState({});
   const [importes, setImportes] = useState({});
 
+  useEffect(() => {
+    getProducts();//obtener la lista de productos
+  }, []);
+  const getProducts = async () => {
+    const response = await axiosPrivate.get("/products/");
+    if (response.status !== 200) {
+      console.error("Error al obtener la lista de productos:", response.data);
+      return;
+    }
+    setSelectedProducts(response.data);
+  };
   const handleCantidadChange = (index, value, precio, envio) => {
+    console.log(value, precio, envio);
     const nuevaCantidad = { ...cantidades, [index]: value };
     setCantidades(nuevaCantidad);
     setImportes({ ...importes, [index]: value * (precio + envio) });
@@ -48,10 +46,11 @@ const ProductoTabla = () => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {productos.map((producto, index) => (
+          {console.log(selectedProducts)}
+          {selectedProducts.map((producto, index) => (
             producto.rangos.map((rango, rangoIndex) => {
               const precio = parseFloat(rango.rango_precio);
-              const envio = parseFloat(rango.coste_envio);
+              const envio = producto.coste_envio ? parseFloat(producto.coste_envio) : 0;
               return (
                 <TableRow key={`${index}-${rangoIndex}`}>
                   {rangoIndex === 0 && (
@@ -59,11 +58,14 @@ const ProductoTabla = () => {
                   )}
                   {rangoIndex === 0 && (
                     <TableCell rowSpan={producto.rangos.length}>
-                      <img src={producto.imagen} alt={producto.titulo} style={{ width: 50, height: 50 }} />
-                    </TableCell>
+                      {producto.imagen ? (
+                        <img src={producto.imagen} alt={producto.titulo} style={{ width: 50, height: 50 }} />
+                      ):('sin imagen')}
+                      </TableCell>
                   )}
-                  <TableCell>{rango.rango_unidades} - ${rango.rango_precio}</TableCell>
-                  <TableCell>${rango.coste_envio}</TableCell>
+                  <TableCell>{rango.rango_unidades} - €{rango.rango_precio}</TableCell>
+                  
+                  <TableCell>€{envio || 'A negociar'}</TableCell>
                   <TableCell>
                     <TextField
                       type="number"
