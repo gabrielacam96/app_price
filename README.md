@@ -16,24 +16,30 @@ La plataforma permite buscar productos, visualizar su historial de precios, esta
 
 ## 📁 Estructura del proyecto
 
-/frontend/ # Código del frontend (React)
-├── pages/ # Vistas principales (login, presupuestos, favoritos, alertas, etc.)
-├── components/ # Componentes reutilizables (tablas, modales, botones)
-├── context/ # Contexto global de autenticación
-├── hooks/ # Custom hooks (axiosPrivate, useAuth, etc.)
-├── middleware/ # Rutas protegidas y control de acceso
-├── theme/ # Estilos globales
-└── App.js # Enrutador principal y layout base
+## 📁 Estructura del proyecto
 
-/backend/ # Código del backend (Django)
-├── app/ # Lógica de negocio principal (modelos, views, serializers, señales)
-│ ├── models.py # Modelos como ItemAlibaba, Budget, Inventario, etc.
-│ ├── serializers.py # Serializadores de Django REST Framework
-│ ├── signals.py # Lógica para scraping y generación automática de datos
-│ ├── views.py # Vistas API (CRUD, búsquedas, alertas)
-│ ├── urls.py # Rutas API REST
-│ └── permissions.py # Roles y restricciones (admin, premium, básico)
-├── scrappers/ # Scripts de scraping de Amazon y Alibaba
-├── ml/ # Algoritmos de predicción de precios (series temporales)
-├── settings.py # Configuración general del proyecto
-└── manage.py # Ejecutable de Django
+```bash
+/frontend/                  # Código del frontend (React)
+│
+├── pages/                  # Vistas principales (login, presupuestos, favoritos, alertas, etc.)
+├── components/             # Componentes reutilizables (tablas, modales, botones)
+├── context/                # Contexto global de autenticación
+├── hooks/                  # Custom hooks (axiosPrivate, useAuth)
+├── middleware/             # Protección de rutas y control de acceso
+├── theme/                  # Estilos globales con MUI
+└── App.js                  # Enrutador y Layout principal
+
+/backend/                   # Código del backend (Django)
+│
+├── app/                    # Lógica de negocio principal
+│   ├── models.py           # Modelos: presupuestos, alertas, inventario, productos, etc.
+│   ├── serializers.py      # Serializadores para la API REST
+│   ├── signals.py          # Lógica automática de scraping y almacenamiento
+│   ├── views.py            # Endpoints y lógica de negocio
+│   ├── urls.py             # Rutas del backend
+│   └── permissions.py      # Restricciones por roles
+│
+├── scrappers/              # Scripts de scraping para Amazon y Alibaba
+├── ml/                     # Predicción de precios con series temporales
+├── settings.py             # Configuración general
+└── manage.py               # Comando principal de Django
