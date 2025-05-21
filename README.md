@@ -16,8 +16,6 @@ La plataforma permite buscar productos, visualizar su historial de precios, esta
 
 ## 📁 Estructura del proyecto
 
-## 📁 Estructura del proyecto
-
 ```bash
 /frontend/                  # Código del frontend (React)
 │
