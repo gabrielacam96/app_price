@@ -1,5 +1,5 @@
 import React from "react";
-import "./LoaderBarras.css";
+import "./loaderBarras.css";
 
 const LoaderBarras = () => {
   return (
