@@ -2,7 +2,6 @@ import './App.css';
 import React, { useContext} from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import Alerts from './pages/Alerts.jsx';
-import "bootstrap/dist/css/bootstrap.min.css";
 import Budget from './pages/Budget.jsx';
 import ListBudget from './pages/ListBudget.jsx';
 import Grafics from './pages/Grafics.jsx';
