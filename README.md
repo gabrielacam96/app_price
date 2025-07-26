@@ -3,8 +3,13 @@
 Este proyecto es una aplicación web full-stack orientada a ayudar a emprendedores y autónomos a **identificar oportunidades de reventa** mediante la comparación de precios entre productos de **Amazon** y proveedores como **Alibaba**.
 
 La plataforma permite buscar productos, visualizar su historial de precios, establecer alertas, gestionar presupuestos de compra, administrar inventario y exportar resultados en PDF. También incluye funcionalidades avanzadas como scraping automatizado y predicción de precios basada en series temporales.
+## 🚀 Demo en producción
+
+Puedes ver la aplicación en funcionamiento aquí 👉 [app-price-sooty.vercel.app](https://app-price-sooty.vercel.app)
+
 
 ## 🌐 Tecnologías utilizadas
+
 
 - **Frontend:** React + Vite + Material UI (MUI)
 - **Backend:** Django + Django REST Framework
