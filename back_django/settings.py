@@ -143,14 +143,14 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://localhost:5174",
-    "https://app-price-frontend.vercel.app",  # o tu dominio real
+    "https://app-price-psi.vercel.app",  # o tu dominio real
 ]
 
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://localhost:5174",  # Agrega esta línea
-    "https://app-price-frontend.vercel.app",  # o tu dominio real
+    "https://app-price-psi.vercel.app",  # o tu dominio real
 ]
 
 REST_FRAMEWORK = {
