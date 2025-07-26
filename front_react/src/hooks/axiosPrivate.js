@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Crea instancia de axios configurada
 const axiosPrivate = axios.create({
-  baseURL: '/app',
+  baseURL:  process.env.REACT_APP_API_URL || '/app',
   headers: {
     'Content-Type': 'application/json',
   },
