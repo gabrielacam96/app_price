@@ -17,7 +17,7 @@ import ListProductosSeguidos from './pages/ListProductosSeguidos.jsx';
 import { ThemeProvider, CssBaseline } from "@mui/material";
 import theme from "./theme"; // Importa el tema global
 import { AuthenticateProvider } from './context/AutenticateContex.jsx'
-import Middleware from './middleware/Middleware.jsx';
+import Middleware from './middleware/middleware.jsx';
 import DashboardAdmin from './pages/DashboardAdmin.jsx';
 import IncidenciasAdmin from './pages/Incidencias.jsx';
 import Inventario from './pages/Inventario.jsx';
