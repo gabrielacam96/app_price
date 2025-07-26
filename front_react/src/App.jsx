@@ -10,7 +10,7 @@ import SearchProduct from './pages/SearchProduct.jsx';
 import CompareProduct from './pages/CompareProducts.jsx';
 import Layout from './components/Layout.jsx';
 import Inicio from './pages/Inicio.jsx';
-import Perfil from './pages/perfil.jsx';
+import Perfil from './pages/Perfil.jsx';
 import ErrorPage from './pages/ErrorPage.jsx';
 import AdministrarUsers from './pages/AdministrarUsers.jsx'
 import ListProductosSeguidos from './pages/ListProductosSeguidos.jsx';
