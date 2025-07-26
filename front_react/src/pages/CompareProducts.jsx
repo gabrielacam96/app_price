@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react'; 
 import ProductTable from '../components/ProducTable';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import ReceiptIcon from '@mui/icons-material/Receipt';
 import {
   Container,
   Grid,
@@ -696,6 +698,7 @@ useEffect(() => {
 
 
   const handleSearch = async () => {
+    setLoading(true);
     if(!selectedProductCompare){
       setError("No hay producto seleccionado para comparar");
       setTimeout(() => {
@@ -713,6 +716,7 @@ useEffect(() => {
           break;
       }
     }
+    setLoading(false);
   };
 
   const onSearchProduct = async () => {
@@ -902,8 +906,8 @@ return (
                         { key: 'margenBeneficio', label: 'Margen de Beneficio' },
                     ]}
                     action={[
-                        { label: ' + Presupuesto', onClick: handleclickAddBudget },
-                        { label: '+ Favoritos ', onClick: handleclickAddSeguimiento },
+                        { label: <ReceiptIcon></ReceiptIcon>, onClick: handleclickAddBudget },
+                        { label: <FavoriteIcon></FavoriteIcon>, onClick: handleclickAddSeguimiento },
                     ]}
                 />
             )}

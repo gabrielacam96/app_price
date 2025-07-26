@@ -16,7 +16,9 @@ router.register(r'coincidence',CoincidenceViewSet)
 router.register(r'price_history', PriceHistoryViewSet)
 router.register(r'price_range', PriceRangeViewSet)
 router.register(r'product_atributes', ProductAttributesViewSet)
-router.register(r'users', UserViewSet)
+router.register(r'users', UserViewSet),
+router.register(r'items-inventario', ItemInventarioViewSet)
+router.register(r'incidencias', IncidenciaViewSet)
 
 urlpatterns = [
     path('amazon/scrape/', scrape_amazon_products, name='amazon_scrape_list_products'),
@@ -33,6 +35,7 @@ urlpatterns = [
     path("current_user/", current_user_view, name='current_user'),
     path("refresh_token/", refresh_view, name='refresh_token'),
     path("change-password/", change_password, name='change-password'),
+    path("forecast-price/", PriceForecastView.as_view(), name='forecast-price'), #Predicción de precios de un producto en base a su historial de precios
 
 ]
 

@@ -23,6 +23,7 @@ import AnnouncementIcon from '@mui/icons-material/Announcement';
 
 import { PriceChange } from "@mui/icons-material";
 import { AuthenticateContext } from "../context/AutenticateContex";
+import axiosPrivate from "../hooks/axiosPrivate";
 
 const opciones = [
   { titulo: "Buscar Products", icono: <SearchIcon fontSize="large" color="primary" />, ruta: "/searchProduct" },
@@ -32,6 +33,7 @@ const opciones = [
   { titulo: "Alertas", icono: <NotificationsIcon fontSize="large" color="primary" />, ruta: "/alerts" },
   { titulo: "Historial de precios", icono: <PriceChange fontSize="large" color="primary" />, ruta: "/grafics" },
   {titulo: "Dashboard", icono: <PriceChange fontSize="large" color="primary" />, ruta: "/dashboard_admin"},
+  {titulo: "Inventario", icono: <PriceChange fontSize="large" color="primary" />, ruta: "/inventario"},
 ];
 
 
@@ -39,9 +41,11 @@ const Inicio = () => {
   const navigate = useNavigate();
   const [titulo, setTitulo] = useState("");
   const [descripcion, setDescripcion] = useState("");
-  const [error, setError] = useState("")
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [open, setOpen] = useState(false);
   const {user} = useContext(AuthenticateContext);
+  const [tipoIncidencia, setTipoIncidencia] = useState('');
 
   console.log("user", user);
 
@@ -53,27 +57,44 @@ const handleCancel = () => {
   setOpen(false);
 };
 
-const handleSubmit = () => {
-  if (!titulo.trim() || !descripcion.trim()) {
+const handleSubmit = async () => {
+  if (!titulo.trim() || !descripcion.trim() || !tipoIncidencia.trim()) {
     setError("Por favor, completa todos los campos.");
     setTimeout(() => setError(null), 1000);
     return;
   }
 
   const nuevaIncidencia = {
-    id: Date.now(),
-    titulo,
-    descripcion,
+    titulo: titulo,
+    descripcion: descripcion,
     fecha: new Date().toISOString().split("T")[0],
     usuario: user.id,
+    tipo: tipoIncidencia,
     estado: "pendiente",
   };
 
-  
-  setTitulo("");
-  setDescripcion("");
-  setError("");
-  setOpen(false);
+  const response = await axiosPrivate.post("/incidencias/", nuevaIncidencia);
+  response.then(() => {
+    setSuccess("Incidencia enviada con exito.");
+    setTimeout(() => {
+      setSuccess(null);
+      setTitulo("");
+      setDescripcion("");
+      setError("");
+      setOpen(false);
+    }, 1000);
+  });
+  response.catch((error) => {
+    console.error("No ha sido posible enviar la incidencia", error);
+    setError("No ha sido posible enviar la incidencia");
+    setTimeout(() => {
+      setError(null);
+      setTitulo("");
+      setDescripcion("");
+      setOpen(false);
+    }, 1000);
+  });
+
 };
 const handleIncidentReport = () => {
   setOpen(true);
@@ -106,15 +127,15 @@ const handleIncidentReport = () => {
         sx={{
           textAlign: "center",
           fontSize: { xs: "12px", sm: "16px", md: "20px" },
-          margin: "15px",
-          padding: "10px"
+          margin: "5px",
+          padding: "5px"
         }}
             >
         Bienvenid@ {user ? user.username : "Invitado"}
         </Typography>
 
 
-            <Grid container spacing={3}>
+      <Grid container spacing={3}>
 
         {opciones.map((opcion, index) => {
           const esOpcionAdmin = opcion.ruta === "/admin_users" || opcion.ruta === "/dashboard_admin";
@@ -170,6 +191,16 @@ const handleIncidentReport = () => {
             onChange={(e) => setTitulo(e.target.value)}
             fullWidth
           />
+          <select
+            value={tipoIncidencia}
+            onChange={(e) => setTipoIncidencia(e.target.value)}
+            style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
+          >
+            <option value="error">error</option>
+            <option value="consulta">consulta</option>
+            <option value="sugerencia">sugerencia</option>
+            <option value="otro">otro</option>
+          </select>
           <TextField
             label="Descripción"
             value={descripcion}

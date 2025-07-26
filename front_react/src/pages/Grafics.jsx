@@ -51,6 +51,18 @@ const Grafics = () => {
 
   // Estado para los datos a mostrar en la gráfica
   const [datosGrafico, setDatosGrafico] = useState({ labels: [], datasets: [] });
+  // Estado para el botón de predicción de precios
+  const [forecastSelected, setForecastSelected] = useState(false);
+  // Estado para manejar la predicción de precios
+  const [amazonHistoryFuture, setAmazonHistoryFuture] = useState([]);
+  const [alibabaHistoryFuture, setAlibabaHistoryFuture] = useState([]);
+
+  const handleForecastClick = () =>{
+    if (!forecastSelected) setForecastSelected(true); // Cambia el estado de forecastSelected
+    else setForecastSelected(false); // Resetea el estado de forecastSelected
+  };
+
+
 
   useEffect(() => {
     const fetchItems = async () => {
@@ -100,105 +112,161 @@ const Grafics = () => {
    *  - Mínimo de Alibaba
    *  - Máximo de Amazon
    */
-  const actualizarDatosGrafico = () => {
-    // Fecha actual y fecha límite según el rango seleccionado
-    const hoy = new Date();
-    const fechaLimite = new Date();
-    if (rangoFechas === "1m") fechaLimite.setMonth(hoy.getMonth() - 1);
-    if (rangoFechas === "6m") fechaLimite.setMonth(hoy.getMonth() - 6);
-    if (rangoFechas === "1y") fechaLimite.setFullYear(hoy.getFullYear() - 1);
+const actualizarDatosGrafico = () => {
+  const hoy = new Date();
+  const fechaLimite = new Date(hoy);
+  if (rangoFechas === "1m") fechaLimite.setMonth(hoy.getMonth() - 1);
+  if (rangoFechas === "6m") fechaLimite.setMonth(hoy.getMonth() - 6);
+  if (rangoFechas === "1y") fechaLimite.setFullYear(hoy.getFullYear() - 1);
 
-    // Procesamos historial de Amazon (si existe)
-    let historialAmazon = generarHistorialPrecios(amazonHistory).filter(d => d.fecha >= fechaLimite);
-    // Procesamos historial de Alibaba (si existe); si se ha seleccionado rango, lo filtramos
-    let historialAlibaba = generarHistorialPrecios(alibabaHistory);
-    if (selectedAlibabaRange) {
-      historialAlibaba = historialAlibaba.filter(d => d.rango === selectedAlibabaRange);
-    }
-    historialAlibaba = historialAlibaba.filter(d => d.fecha >= fechaLimite);
+  // ——————————————
+  // 1) HISTORIAL PASADO
+  // ——————————————
+  let historialAmazon = generarHistorialPrecios(amazonHistory)
+    .map(d => ({ fecha: new Date(d.fecha), precio: d.precio }))
+    .filter(d => d.fecha >= fechaLimite);
 
-    // Generar etiquetas: usamos las fechas únicas entre ambos historiales ordenadas de forma ascendente
-    const fechas = Array.from(
-      new Set([
-        ...historialAmazon.map(d => d.fecha.toISOString().split("T")[0]),
-        ...historialAlibaba.map(d => d.fecha.toISOString().split("T")[0])
-      ])
-    ).sort();
+  console.log("Historial Amazon:", historialAmazon);
 
-    // Armamos los datasets principales (líneas de Amazon y Alibaba)
-    const datasets = [];
+  let historialAlibaba = generarHistorialPrecios(alibabaHistory)
+    .map(d => ({ fecha: new Date(d.fecha), precio: d.precio, rango: d.rango }))
+    .filter(d => {
+      if (selectedAlibabaRange) return d.rango === selectedAlibabaRange;
+      return true;
+    })
+    .filter(d => d.fecha >= fechaLimite);
 
-    let dataAmazon = [];
-    if (historialAmazon.length > 0) {
-      // Ordenamos según la fecha
-      dataAmazon = fechas.map(fecha => {
-        // Buscamos el registro para esa fecha (o null)
-        const registro = historialAmazon.find(d => d.fecha.toISOString().split("T")[0] === fecha);
-        return registro ? registro.precio : null;
-      });
-      datasets.push({
-        label: "Historial de Precios Amazon",
-        data: dataAmazon,
-        borderColor: "#3b82f6",
-        backgroundColor: "rgba(59, 130, 246, 0.2)",
-        fill: true,
-        tension: 0.3,
-      });
-    }
+  console.log("Historial Alibaba:", historialAlibaba);
+  // ——————————————
+  // 2) PREDICCIÓN FUTURA
+  // ——————————————
+  let historialAmazonFuture = [];
+  let historialAlibabaFuture = [];
+  
 
-    let dataAlibaba = [];
-    if (historialAlibaba.length > 0) {
-      dataAlibaba = fechas.map(fecha => {
-        const registro = historialAlibaba.find(d => d.fecha.toISOString().split("T")[0] === fecha);
-        return registro ? registro.precio : null;
-      });
-      datasets.push({
-        label: "Historial de Precios Alibaba",
-        data: dataAlibaba,
-        borderColor: "#16a34a",
-        backgroundColor: "rgba(22, 163, 74, 0.2)",
-        fill: true,
-        tension: 0.3,
-      });
-    }
+  if (amazonHistoryFuture?.dates && amazonHistoryFuture?.prices) {
+    historialAmazonFuture = amazonHistoryFuture.dates.map((d, i) => ({
+      fecha: new Date(d),
+      precio: amazonHistoryFuture.prices[i] ?? null
+    }));
+  }
 
-    // Agregamos una línea horizontal para el mínimo de Alibaba
-    if (dataAlibaba.length > 0 && dataAlibaba.some(val => val !== null)) {
-      const validAlibabaVals = dataAlibaba.filter(val => val !== null);
-      const minAlibaba = Math.min(...validAlibabaVals);
-      datasets.push({
-        label: "Mínimo Alibaba",
-        data: new Array(fechas.length).fill(minAlibaba),
-        borderColor: "purple",
-        borderDash: [5, 5],
-        borderWidth: 2,
-        fill: false,
-        tension: 0.1,
-      });
-    }
+  if (alibabaHistoryFuture?.dates && alibabaHistoryFuture?.prices) {
+    historialAlibabaFuture = alibabaHistoryFuture.dates.map((d, i) => ({
+      fecha: new Date(d),
+      precio: alibabaHistoryFuture.prices[i] ?? null
+    }));
+  }
+  
+  // ——————————————
+  // 3) UNIÓN DE FECHAS
+  // ——————————————
+  const todasFechas = new Set();
+  [
+    ...historialAmazon,
+    ...historialAlibaba,
+    ...historialAmazonFuture,
+    ...historialAlibabaFuture
+  ].forEach(d => todasFechas.add(d.fecha.toISOString().slice(0,10)));
+  const fechas = Array.from(todasFechas).sort();
 
-    // Agregamos una línea horizontal para el máximo de Amazon
-    if (dataAmazon.length > 0 && dataAmazon.some(val => val !== null)) {
-      const validAmazonVals = dataAmazon.filter(val => val !== null);
-      const maxAmazon = Math.max(...validAmazonVals);
-      datasets.push({
-        label: "Máximo Amazon",
-        data: new Array(fechas.length).fill(maxAmazon),
-        borderColor: "orange",
-        borderDash: [5, 5],
-        borderWidth: 2,
-        fill: false,
-        tension: 0.1,
-      });
-    }
+  // ——————————————
+  // 4) FUNCIÓN AUXILIAR PARA CREAR SERIES
+  // ——————————————
+  const buildSerie = historial =>
+    fechas.map(f => {
+      const rec = historial.find(d => d.fecha.toISOString().slice(0,10) === f);
+      return rec ? rec.precio : null;
+    });
 
-    // Establecemos los datos finales
-    if (fechas.length > 0 && datasets.length > 0) {
-      setDatosGrafico({ labels: fechas, datasets });
-    } else {
-      setDatosGrafico({ labels: [], datasets: [] });
-    }
-  };
+  // ——————————————
+  // 5) CREACIÓN DE DATASETS
+  // ——————————————
+  const datasets = [];
+
+  if (historialAmazon.length) {
+    datasets.push({
+      label: "Historial Amazon",
+      data: buildSerie(historialAmazon),
+      borderColor: "#3b82f6",
+      backgroundColor: "rgba(59,130,246,0.2)",
+      fill: true,
+      tension: 0.3
+    });
+  }
+
+  if (historialAlibaba.length) {
+    datasets.push({
+      label: "Historial Alibaba",
+      data: buildSerie(historialAlibaba),
+      borderColor: "#16a34a",
+      backgroundColor: "rgba(22,163,74,0.2)",
+      fill: true,
+      tension: 0.3
+    });
+  }
+
+  // ——————————————
+  // 6) PREDICCIONES (líneas punteadas)
+  // ——————————————
+  if (historialAmazonFuture.length) {
+    datasets.push({
+      label: "Pronóstico Amazon (6m)",
+      data: buildSerie(historialAmazonFuture),
+      borderColor: "#3b82f6",
+      borderDash: [5,5],
+      fill: false,
+      tension: 0.3
+    });
+  }
+
+  if (historialAlibabaFuture.length) {
+    datasets.push({
+      label: "Pronóstico Alibaba (6m)",
+      data: buildSerie(historialAlibabaFuture),
+      borderColor: "#16a34a",
+      borderDash: [5,5],
+      fill: false,
+      tension: 0.3
+    });
+  }
+
+  // ——————————————
+  // 7) LINEAS DE MÁXIMO/MÍNIMO
+  // ——————————————
+  const amazonVals = buildSerie(historialAmazon).filter(v=>v!=null);
+  if (amazonVals.length) {
+    const maxA = Math.max(...amazonVals);
+    datasets.push({
+      label: "Máximo Amazon",
+      data: fechas.map(()=>maxA),
+      borderColor: "orange",
+      borderDash: [4,4],
+      fill: false,
+      tension: 0.1
+    });
+  }
+
+  const aliVals = buildSerie(historialAlibaba).filter(v=>v!=null);
+  if (aliVals.length) {
+    const minB = Math.min(...aliVals);
+    datasets.push({
+      label: "Mínimo Alibaba",
+      data: fechas.map(()=>minB),
+      borderColor: "purple",
+      borderDash: [4,4],
+      fill: false,
+      tension: 0.1
+    });
+  }
+
+  // ——————————————
+  // 8) ACTUALIZAR ESTADO
+  // ——————————————
+  setDatosGrafico({ labels: fechas, datasets });
+};
+
+
 
   /**
    * Al seleccionar un item de Amazon se consulta su historial de precios
@@ -236,7 +304,7 @@ const Grafics = () => {
             );
             let rangos = [];
             for (const rango_id of rangosUnicos) {
-              const rango = await axiosPrivate.get(`/price_range/${rango_id}`);
+              const rango = await axiosPrivate.get(`/price_range/${rango_id}/`);
               rangos.push(rango.data);
               
             }
@@ -260,6 +328,40 @@ const Grafics = () => {
     }
   }, [alibabaSelected]);
 
+  useEffect(() => {
+    //Si Boton de calcular prediccion de precios es presionado, se actualiza la gráfica
+
+    if(forecastSelected){
+      const fetchForecast = async () => {
+        try {
+          const response = await axiosPrivate.get(`/forecast-price/?id_item_alibaba=${alibabaSelected}&&id_rango=${selectedAlibabaRange}&&id_item_amazon=${amazonSelected}`);
+          console.log("Respuesta de la predicción:", response.data);
+          if (response.status === 200) {
+            
+            const amazonForecast = response.data.amazon;
+            const alibabaForecast = response.data.alibaba;
+            // Actualizamos los historiales con las predicciones
+            setAmazonHistoryFuture(amazonForecast);
+            setAlibabaHistoryFuture(alibabaForecast);
+
+            // Añade los datos de la predicción a los datasets existentes
+            setForecastSelected(false); // Reseteamos el estado de predicción
+            actualizarDatosGrafico(); // Actualizamos la gráfica con los nuevos datos
+
+            
+
+          }
+        } catch (error) {
+          console.error("Error al obtener predicción de precios:", error);
+        }
+
+      }
+      fetchForecast();
+    }
+  }, [forecastSelected]);
+
+  
+
   /**
    * Cada vez que cambie alguno de los historiales, el rango de fechas o el rango seleccionado para Alibaba,
    * se actualiza la gráfica.
@@ -267,7 +369,7 @@ const Grafics = () => {
   useEffect(() => {
     actualizarDatosGrafico();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [amazonHistory, alibabaHistory, rangoFechas, selectedAlibabaRange]);
+  }, [amazonHistory, alibabaHistory, rangoFechas, selectedAlibabaRange,forecastSelected,amazonHistoryFuture,alibabaHistoryFuture]);
 
   console.log(alibabaRanges,"rangos");
   return (
@@ -351,6 +453,13 @@ const Grafics = () => {
             Último Año
           </MenuItem>
         </Select>
+      </Box>
+
+      {/* Botón para calcular predicción de precios */}
+      <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
+        <Button variant="contained" color="primary" onClick={() => handleForecastClick()}>
+          Calcular Predicción
+        </Button>
       </Box>
 
       {/* Gráfico de Línea */}
