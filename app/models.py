@@ -151,6 +151,16 @@ class Budget(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, blank=True)
     date = models.DateField(auto_now_add=True)  # Usamos una fecha predeterminada
     items = models.ManyToManyField(ItemAlibaba, through='ListBudget')
+    
+    estado = models.CharField(
+        max_length=50,
+        choices=[
+            ('pendiente', 'Pendiente'),
+            ('ordenado', 'Ordenado'),
+            ('recibido', 'Recibido')
+        ],
+        default='pendiente'
+        )
 
     @property
     def n_items_total(self):
@@ -223,3 +233,56 @@ class Following(models.Model):
 class ListFollowing(models.Model):
     lista = models.ForeignKey(Following, on_delete=models.CASCADE)
     item = models.ForeignKey(ItemAlibaba, on_delete=models.CASCADE)
+
+class Inventario(models.Model):
+    name = models.CharField(max_length=255)
+    date = models.DateField(auto_now_add=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE,blank=True)
+    items = models.ManyToManyField(ItemAlibaba, through='ItemInventario')
+
+    @property
+    def n_items_total(self):
+        return self.items.count()
+
+    def __str__(self):
+        return self.name
+    
+class ItemInventario(models.Model):
+   
+    item = models.ForeignKey(ItemAlibaba, on_delete=models.CASCADE)
+    unidades = models.PositiveIntegerField(default=0)
+    vendidas = models.PositiveIntegerField(default=0)
+    precio_venta = models.DecimalField(max_digits=10, decimal_places=2,blank=True, null=True)
+    precio_compra = models.DecimalField(max_digits=10, decimal_places=2,blank=True, null=True)
+    budget = models.ForeignKey(Budget, on_delete=models.CASCADE)
+    inventario = models.ForeignKey(Inventario, on_delete=models.CASCADE)
+    
+    def __str__(self):
+        return self.item.title
+    
+
+class Incidencia(models.Model):
+    ESTADO_CHOICES = [
+        ('pendiente', 'Pendiente'),
+        ('en_progreso', 'En progreso'),
+        ('resuelta', 'Resuelta'),
+        ('cerrada', 'Cerrada'),
+    ]
+
+    TIPO_CHOICES = [
+        ('error', 'Error'),
+        ('sugerencia', 'Sugerencia'),
+        ('consulta', 'Consulta'),
+        ('otro', 'Otro'),
+    ]
+
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, blank=True)
+    titulo = models.CharField(max_length=255)
+    descripcion = models.TextField()
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default='otro')
+    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='pendiente')
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.titulo} ({self.usuario.username})"

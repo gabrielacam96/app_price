@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import axiosPrivate from "../hooks/axiosPrivate";
 import {
   Box,
   Typography,
@@ -18,36 +19,30 @@ const Incidencias = () => {
 
   // Simula datos desde una API
   useEffect(() => {
-    const datosSimulados = [
-      {
-        id: 1,
-        titulo: "Error al subir presupuesto",
-        descripcion: "No se puede guardar el presupuesto después de cargar productos.",
-        fecha: "2025-04-29",
-        usuario: "jose.garcia",
-        estado: "pendiente",
-      },
-      {
-        id: 2,
-        titulo: "Problema con login",
-        descripcion: "Al intentar iniciar sesión, se queda cargando.",
-        fecha: "2025-04-27",
-        usuario: "laura.martinez",
-        estado: "resuelto",
-      },
-    ];
-    setIncidencias(datosSimulados);
+    getIncidencias();
   }, []);
 
-  const marcarComoResuelto = (id) => {
+  const getIncidencias = async () => {
+    try {
+      const response = await axiosPrivate.get("/incidencias");
+      setIncidencias(response.data);
+    } catch (error) {
+      console.error("Error al obtener las incidencias:", error);
+    }
+  };
+
+  const changeEstado = (tipo,id) => {
+
+    axiosPrivate.patch(`/incidencias/${id}/`, { estado: tipo });
     setIncidencias((prev) =>
       prev.map((inc) =>
-        inc.id === id ? { ...inc, estado: "resuelto" } : inc
+        inc.id === id ? { ...inc, estado: tipo } : inc
       )
     );
   };
 
   const eliminarIncidencia = (id) => {
+    axiosPrivate.delete(`/incidencias/${id}/`);
     setIncidencias((prev) => prev.filter((inc) => inc.id !== id));
   };
 
@@ -76,7 +71,7 @@ const Incidencias = () => {
                 <TableCell>{incidencia.id}</TableCell>
                 <TableCell>{incidencia.titulo}</TableCell>
                 <TableCell>{incidencia.descripcion}</TableCell>
-                <TableCell>{incidencia.fecha}</TableCell>
+                <TableCell>{incidencia.creado_en}</TableCell>
                 <TableCell>{incidencia.usuario}</TableCell>
                 <TableCell>
                   <Chip
@@ -89,14 +84,14 @@ const Incidencias = () => {
                 <TableCell>
                   <Box sx={{ display: "flex", gap: 1 }}>
                     {incidencia.estado !== "resuelto" && (
-                      <Button
-                        variant="contained"
-                        size="small"
-                        color="success"
-                        onClick={() => marcarComoResuelto(incidencia.id)}
+                      <select
+                        onChange={(e) => changeEstado(e.target.value, incidencia.id)}
                       >
-                        Marcar como resuelto
-                      </Button>
+                        <option value="pendiente">Pendiente</option>
+                        <option value="en_proceso">En proceso</option>
+                        <option value="resuelto">Resuelto</option>
+                        <option value="cerrada">Cerrada</option>
+                      </select>
                     )}
                     <Button
                       variant="outlined"

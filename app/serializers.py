@@ -4,7 +4,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import (
     Supplier, ItemAlibaba, ItemAmazon, ProductAttribute, Coincidence, PriceRange, PriceHistory,
-    Comparacion, Alert, Budget, ListBudget, Following, ListFollowing, CategoryAmazon, CategoryAlibaba
+    Comparacion, Alert, Budget, ListBudget, Following, ListFollowing, Inventario, ItemInventario,Incidencia
 )
 
 class ChangeGroupSerializer(serializers.Serializer):
@@ -129,7 +129,7 @@ class BudgetSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Budget
-        fields = ['id','name', 'user', 'date','n_items_total','total_amount','shipping_cost_total','items']
+        fields = ['id','name', 'user', 'date','n_items_total','total_amount','shipping_cost_total','items','estado']
 
 class ListFollowingSerializer(serializers.ModelSerializer):
     class Meta:
@@ -141,4 +141,20 @@ class FollowingSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Following
+        fields = '__all__'
+
+class InventarioSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Inventario
+        fields = '__all__'
+
+class ItemInventarioSerializer(serializers.ModelSerializer):
+    item_name = serializers.ReadOnlyField(source='item.title')
+    class Meta:
+        model = ItemInventario
+        fields = ['id','inventario','item','item_name','unidades','vendidas','precio_venta','precio_compra','budget']
+
+class IncidenciaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Incidencia
         fields = '__all__'

@@ -21,6 +21,7 @@ import { AuthenticateProvider } from './context/AutenticateContex.jsx'
 import Middleware from './middleware/Middleware.jsx';
 import DashboardAdmin from './pages/DashboardAdmin.jsx';
 import IncidenciasAdmin from './pages/Incidencias.jsx';
+import Inventario from './pages/Inventario.jsx';
 
 
 
@@ -29,7 +30,6 @@ function App() {
     <AuthenticateProvider>   
     <ThemeProvider theme={theme}>
       <CssBaseline />
-
         <Router>
           <Routes>
             {/* RUTA SIN LAYOUT (Solo Login) */}
@@ -49,6 +49,7 @@ function App() {
                 <Route path="/list_product_seguidos" element={<ListProductosSeguidos />} />
                 <Route path="/alerts" element={<Alerts />} />
                 <Route path="/perfil" element={<Perfil />} />
+                <Route path="/inventario" element={<Inventario />} />
                 <Route path="/admin_users" element={<AdministrarUsers />} />
                 <Route path="/dashboard_admin" element={<DashboardAdmin />} />
                 <Route path="/incidencias_admin" element={<IncidenciasAdmin />} />

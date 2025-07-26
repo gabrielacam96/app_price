@@ -109,7 +109,7 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           padding: "12px",
-          fontSize: "12px",
+          fontSize: "10px",
         },
         head: {
           fontWeight: "bold",

@@ -6,8 +6,6 @@ import axiosPrivate from "../hooks/axiosPrivate";
 export const AuthenticateProvider = ({ children }) => {
   const [authenticate, setAuthenticate] = useState(false);
   const [user, setUser] = useState(null);
-
-
     // Al cargar la app, recuperar usuario desde backend
     useEffect(() => {
       const fetchUser = async () => {

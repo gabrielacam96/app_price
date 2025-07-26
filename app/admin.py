@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     Supplier, ItemAlibaba, ItemAmazon, ProductAttribute, Coincidence, PriceRange, PriceHistory,
-    Comparacion, Alert, Budget, ListBudget, Following, ListFollowing,
+    Comparacion, Alert, Budget, ListBudget, Following, ListFollowing,Inventario, ItemInventario
 )
 
 
@@ -71,3 +71,16 @@ class FollowingAdmin(admin.ModelAdmin):
 class ListFollowingAdmin(admin.ModelAdmin):
     list_display = ('lista', 'item')
     search_fields = ('lista__name', 'item__title')
+@admin.register(Inventario)
+class InventarioAdmin(admin.ModelAdmin):
+    list_display = ('name', 'date', 'user', 'n_items_total')
+    search_fields = ('name', 'user__username')
+
+@admin.register(ItemInventario)
+class ItemInventarioAdmin(admin.ModelAdmin):
+    list_display = ('item', 'unidades', 'precio_venta', 'precio_compra', 'budget')
+    search_fields = ('item__title', 'budget__name')
+
+class IncidenciaAdmin(admin.ModelAdmin):
+    list_display = ('id', 'titulo', 'descripcion', 'fecha', 'usuario', 'estado')
+    search_fields = ('titulo', 'descripcion', 'usuario__username')

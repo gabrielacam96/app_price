@@ -31,8 +31,8 @@ function ListBudget() {
   const [addItemBudget, setAddItemBudget] = useState(false);
 
   //logs
-  const [error, setError] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [isValid, setIsValid] = useState(true);
 
   useEffect(() => {
@@ -395,6 +395,18 @@ function ListBudget() {
     }
   };
   
+  const handleEstadoChange = async (id,estado) => {
+    const response = await axiosPrivate.patch(`/budgets/${id}/`,{estado:estado});
+    if (response.status === 200) {
+      setSuccess("Actualizado con Exito")
+      setTimeout(()=>{
+        setSuccess(null);
+        getBudgets();
+      },1000)
+      console.log("Actualizado con éxito estado.");
+    }
+   
+  }
   const handleChangeItem = async (id, field, value) => {
 
     //field como units o coste de envio modificables
@@ -520,6 +532,7 @@ function ListBudget() {
                  <TableCell>Nº artículos</TableCell>
                  <TableCell>Coste Total</TableCell>
                  <TableCell>Coste envío</TableCell>
+                 <TableCell>Estado</TableCell>
                  <TableCell align="center">
                    <Button
                      startIcon={<Add />}
@@ -538,6 +551,18 @@ function ListBudget() {
                    <TableCell>{presupuesto.n_items_total}</TableCell>
                    <TableCell>{presupuesto.total_amount}€</TableCell>
                    <TableCell>{presupuesto.shipping_cost_total}€</TableCell>
+                   <TableCell>
+                    <Select
+                      sx={{ fontSize: '10px' }}
+                      value={presupuesto.estado}
+                      onChange={(e) => handleEstadoChange(presupuesto.id, e.target.value)}
+                      inputProps={{ "aria-label": "Estado" }}
+                    >
+                      <MenuItem sx={{ fontSize: '10px' }} value="pendiente">Pendiente</MenuItem>
+                      <MenuItem sx={{ fontSize: '10px' }} value="ordenado">Ordenado</MenuItem>
+                      <MenuItem sx={{ fontSize: '10px' }} value="recibido">Recibido</MenuItem>
+                    </Select>
+                   </TableCell>
                    <TableCell align="center">
                      <IconButton onClick={() => handleVerPresupuesto(presupuesto)}>
                        <Visibility />
@@ -599,6 +624,10 @@ function ListBudget() {
                  </Typography>
                  <Typography variant="body2" sx={{ mb: 1 }}>
                    <strong>Coste envío:</strong> {presupuesto.shipping_cost_total}€
+                 </Typography>
+                 <Typography variant="body2" sx={{ mb: 1 }}>
+
+                   <strong>Estado:</strong> {presupuesto.estado}
                  </Typography>
                  <Box sx={{ textAlign: "right" }}>
                    <IconButton onClick={() => handleVerPresupuesto(presupuesto)}>

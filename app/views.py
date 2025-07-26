@@ -1,16 +1,12 @@
 import textwrap
-from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
-from django.views import View
 from django.middleware.csrf import get_token
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User, Group
 from django.db.models import Q
 from django.utils import timezone
-from django.core.exceptions import PermissionDenied
 from app.utils import clean_text
-from django.db.models import OuterRef, Subquery, Max
-from urllib.parse import quote_plus
+from django.db.models import OuterRef, Subquery
 from django.contrib.auth import get_user_model
 
 
@@ -23,30 +19,11 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAdminUser
 
 
-from urllib.parse import urlparse, unquote, urlencode
-import requests
-import time
-import random
-import re
-from bs4 import BeautifulSoup
+from urllib.parse import unquote
 from app.ml.feature_extraction import extract_features
-from app.scrappers import scrape_alibaba, scrape_amazon
+from app.ml.forescast_price import forecast_price_json
+from app.scrappers import scrape_alibaba,scrape_amazon
 
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
-import undetected_chromedriver as uc
-
-from fake_useragent import UserAgent
-
-
-import requests, re
-from urllib.parse import urlencode
 from rest_framework.permissions import IsAuthenticated
 from io import BytesIO
 from reportlab.pdfgen import canvas
@@ -64,11 +41,11 @@ from .serializers import (
     ItemAmazonSerializer, ProductAttributeSerializer, CoincidenceSerializer,
     PriceRangeSerializer, PriceHistorySerializer, ComparacionSerializer,
     AlertSerializer, BudgetSerializer, ListBudgetSerializer, FollowingSerializer,
-    ListFollowingSerializer,UserSerializer, ChangeGroupSerializer
+    ListFollowingSerializer,UserSerializer, ChangeGroupSerializer, InventarioSerializer, ItemInventarioSerializer,IncidenciaSerializer
 )
 from .models import (
-    Supplier, ItemAlibaba, ItemAmazon, ProductAttribute, Coincidence, PriceRange,
-    PriceHistory, Comparacion, Alert, Budget, ListBudget, Following, ListFollowing, CategoryAmazon, CategoryAlibaba,ProductAttribute
+    Supplier, ItemAlibaba, ItemAmazon, ProductAttribute, Coincidence, PriceRange,Inventario, ItemInventario,
+    PriceHistory, Comparacion, Alert, Budget, ListBudget, Following, ListFollowing, CategoryAmazon, CategoryAlibaba,ProductAttribute,Incidencia
 )
 
 def csrf(request):
@@ -122,7 +99,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
         usuario = self.get_object()
 
-        # opcional: quita todos los grupos al que pertenece
+        #quita todos los grupos al que pertenece
         usuario.groups.clear()
 
         group = Group.objects.get(name=group_name)
@@ -165,140 +142,6 @@ def change_password(request):
 
     return Response({'message': 'Contraseña actualizada con éxito'})
 
-def extract_amazon_products(soup, max_items=20):
-    resultados = []
-    cards = soup.select('div[data-component-type="s-search-result"]')[:max_items]
-    for card in cards:
-        # — 1) TÍTULO — 
-        # Intento selector span dentro de h2 > a
-        h2 = card.select_one('h2.a-size-base-plus')
-        titulo = None
-        if h2:
-            # intento span normal
-            span = h2.select_one('span')
-            if span and span.get_text(strip=True):
-                titulo = span.get_text(strip=True)
-
-        # — 2) URL —  
-        url = None
-        a2 = card.select_one('a.a-link-normal.s-link-style')
-        if a2 and a2.get('href'):
-            url = 'https://www.amazon.es' + a2['href']
-
-        # — 3) IMAGEN, PRECIO, RATING, REVIEWS (igual que antes) —
-        imagen = None
-        img = card.select_one('img.s-image')
-        if img and img.get('src'):
-            imagen = img['src']
-
-        precio = None
-        whole = card.select_one('span.a-price-whole')
-        frac  = card.select_one('span.a-price-fraction')
-        if whole:
-            w = whole.get_text(strip=True).replace('.', '').replace(',', '')
-            precio = f"{w}.{frac.get_text(strip=True)}" if frac else w
-
-        rating = None
-        rspan = card.select_one('span.a-icon-alt')
-        if rspan:
-            m = re.search(r'([\d,]+)', rspan.get_text())
-            if m:
-                rating = float(m.group(1).replace(',', '.'))
-
-        reviews = None
-        rsp = card.select_one('span.a-size-base.s-underline-text')
-        if rsp:
-            reviews = rsp.get_text(strip=True)
-
-        resultados.append({
-            'titulo': titulo,
-            'url':     url,
-            'imagen':  imagen,
-            'precio':  precio,
-            'rating':  rating,
-            'reviews': reviews,
-        })
-    return resultados
-
-def extract_amazon_products_filtro(soup, max_items=20):
-    """
-    Extrae de la sección "Los más vendidos" de Amazon:
-      - title: nombre del producto
-      - rating: puntuación media (float)
-      - stars: número de estrellas (float)
-      - reviews: número de reseñas (int)
-      - url: enlace al detalle del producto (completo)
-      - image: URL de la imagen principal
-      - price: precio como string (p.ej. "18,99 €")
-    """
-    items = []
-    # Cada producto viene dentro de div.p13n-sc-uncoverable-faceout
-    cards = soup.select("div.p13n-sc-uncoverable-faceout")[:max_items]
-    print(f"Encontrados {len(cards)} productos en la sección de tendencia")
-
-    for card in cards:
-        # 1) URL y título
-        link_a = card.select_one("a.a-link-normal.aok-block")
-        relative_url = link_a["href"] if link_a and link_a.get("href") else ""
-        url = f"https://www.amazon.es{relative_url}"
-        print(f"URL: {url}")
-
-        title_span = card.select_one("div._cDEzb_p13n-sc-css-line-clamp-3_g3dy1")
-        
-        if title_span == None:
-            #cuando la categoria es all cambia el selector
-           # Basta con pescarlos por la clase "p13n-sc-truncate-fallback":
-            title_span = (
-            card.select_one('div[data-rows="1"]')
-            or card.select_one("div.p13n-sc-truncate-fallback")
-        )
-
-
-        title = title_span.get_text(strip=True) if title_span else None
-        print(f"Título: {title}")
-        # 2) Imagen
-        img = card.select_one("div.a-section.a-spacing-mini._cDEzb_noop_3Xbw5 img")
-        image = img["src"] if img and img.get("src") else None
-        print(f"Imagen: {image}")
-        # 3) Rating y reviews
-        rating_anchor = card.select_one("div.a-icon-row a")
-        rating = None
-        reviews = None
-        stars = None
-        if rating_anchor:
-            title_attr = rating_anchor.get("title", "")
-            # Ej: "4,3 de 5 estrellas, 13.348 calificaciones"
-            import re
-            m = re.search(r"([\d,]+)\s+de\s+5\s+estrellas", title_attr)
-            if m:
-                stars = float(m.group(1).replace(",", "."))
-            m2 = re.search(r"([\d\.]+)\s+calificaciones", title_attr)
-            if m2:
-                reviews = int(m2.group(1).replace(".", ""))
-            # A veces rating_media == stars
-            rating = stars
-
-        # 4) Precio
-        price_span = card.select_one("span.a-size-base.a-color-price")
-        if price_span:
-            price_text = price_span.get_text(strip=True).replace("€", "").replace(",", ".")
-            try:
-             price = float(price_text)
-            except ValueError:
-             price = None
-        else:
-            price = None
-
-        items.append({
-            "titulo":     title,
-            "rating":    rating,
-            "reviews":   reviews,
-            "url":       url,
-            "imagen":     image,
-            "precio":     price,
-        })
-
-    return items
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -307,120 +150,7 @@ def scrape_amazon_products(request):
     category  = request.query_params.get('category')
     tendencia = request.query_params.get('filtro')
 
-    # Validación de parámetros
-    if not category or not (query or tendencia):
-        return Response({'error': 'Faltan parámetros query o category'}, status=400)
-
-    # Construcción de la URL
-    if tendencia:
-        if category == 'all':
-            url = f"https://www.amazon.es/gp/{tendencia}"
-        else:
-            url = f"https://www.amazon.es/gp/{tendencia}/{category}"
-    else:
-        params = {'k': query, 'i': category}
-        url    = f"https://www.amazon.es/s?{urlencode(params)}"
-    print("la urles",url)
-    headers = {
-        'User-Agent':      'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-        'Accept-Language': 'es-ES,es;q=0.9',
-        'Accept':          'text/html,application/xhtml+xml'
-    }
-
-    # 1) Intento rápido con requests + BeautifulSoup
-    try:
-        resp = requests.get(url, headers=headers, timeout=5)
-        resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, 'html.parser')
-        productos = (extract_amazon_products_filtro(soup)
-                     if tendencia else
-                     extract_amazon_products(soup))
-        completos = [p for p in productos if p.get('titulo') and p.get('url')]
-        if completos:
-            return Response({'resultados': completos})
-    except Exception:
-        # ignora y pasa al fallback
-        pass
-
-    # 2) Fallback con Selenium (con context‐manager)
-    chrome_opts = Options()
-    chrome_opts.add_argument('--headless')
-    chrome_opts.add_argument('--disable-gpu')
-    chrome_opts.add_argument('--no-sandbox')
-    chrome_opts.add_argument('--disable-dev-shm-usage')
-    # Desactivar recursos para mayor velocidad
-    prefs = {
-        "profile.managed_default_content_settings.images":       2,
-        "profile.managed_default_content_settings.stylesheets":  2,
-        "profile.managed_default_content_settings.fonts":        2,
-    }
-    chrome_opts.add_experimental_option('prefs', prefs)
-
-    service = Service(ChromeDriverManager().install())
-
-    try:
-        with webdriver.Chrome(service=service, options=chrome_opts) as driver:
-            driver.get(url)
-            WebDriverWait(driver, 5).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'div[data-component-type="s-search-result"]'))
-            )
-            soup = BeautifulSoup(driver.page_source, 'html.parser')
-            productos = (extract_amazon_products_filtro(soup)
-                         if tendencia else
-                         extract_amazon_products(soup))
-            completos = [p for p in productos if p.get('titulo') and p.get('url')]
-            return Response({'resultados': completos})
-    except Exception as e:
-        # Log completo en servidor
-        logger.exception("Selenium falló al cargar la página Amazon")
-        # Enviar sólo la primera línea al cliente
-        first_line = str(e).splitlines()[0]
-        return Response({'error': f'Error en Selenium: {first_line}'}, status=500)
-
-
-
-
-def _build_driver():
-    opts = Options()
-    opts.add_argument("--headless=new")          # headless moderno
-    opts.add_argument("--disable-gpu")
-    opts.add_argument("--no-sandbox")
-    opts.add_argument("--disable-webgl") 
-    opts.add_argument("--disable-dev-shm-usage")
-    opts.page_load_strategy = "eager"            # no espera imgs/css
-
-    # bloquea imgs, css, fuentes via CDP
-    blocked = ["*.png", "*.jpg", "*.jpeg", "*.gif", "*.svg",
-               "*.webp", "*.css", "*.woff", "*.woff2", "*.ttf"]
-    drv = webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()),
-        options=opts
-    )
-    drv.execute_cdp_cmd("Network.enable", {})
-    drv.execute_cdp_cmd("Network.setBlockedURLs", {"urls": blocked})
-    return drv
-
-_DRIVER = _build_driver()
-
-
-# ─── helper ─────────────────────────────────────────────────────────────
-def _scroll_until(driver, min_cards=20, max_scrolls=8):
-    """
-    Hace scroll hasta que aparezcan al menos `min_cards`
-    o se agote `max_scrolls`.
-    """
-    sel = ".fy23-search-card, .fy24-search-card"
-    last = 0
-    for _ in range(max_scrolls):
-        cur = len(driver.find_elements(By.CSS_SELECTOR, sel))
-        if cur >= min_cards or cur == last:
-            break
-        last = cur
-        driver.execute_script("window.scrollBy(0, window.innerHeight*0.9)")
-        WebDriverWait(driver, 2).until(
-            lambda d: len(d.find_elements(By.CSS_SELECTOR, sel)) > cur
-        )
-
+    return scrape_amazon.scrape_amazon_products(query, category, tendencia)
 # ─── vista ──────────────────────────────────────────────────────────────
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -428,27 +158,7 @@ def scrape_alibaba_products(request):
     consulta  = request.query_params.get("consulta")
     categoria = request.query_params.get("categoria")
 
-    if not consulta:
-        return JsonResponse({"error": "Falta parámetro consulta"}, status=400)
-
-    url  = "https://spanish.alibaba.com/trade/search?SearchText=" + quote_plus(consulta)
-    if categoria:
-        url += f"&categoryId={categoria}"
-
-    driver = _DRIVER
-    try:
-        driver.get(url)
-        WebDriverWait(driver, 6).until(
-            EC.presence_of_element_located(
-                (By.CSS_SELECTOR, ".fy23-search-card, .fy24-search-card")
-            )
-        )
-        _scroll_until(driver, min_cards=20)           # ⬅️  solo hasta 20
-        soup = BeautifulSoup(driver.page_source, "lxml")
-        productos = extract_product_info(soup, max_items=20)  # ⬅️  corta a 20
-        return JsonResponse({"resultados": productos})
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=500)
+    return scrape_alibaba.scrape_alibaba_products(consulta, categoria)
 
 
 @api_view(['GET'])
@@ -456,204 +166,8 @@ def scrape_alibaba_products(request):
 def scrape_alibaba_by_image(request):
     image = request.query_params.get("image")
     image_url = unquote(image)
-    options = uc.ChromeOptions()
-    options.add_argument("--headless")
-    options.add_argument("--disable-blink-features=AutomationControlled")
-
-    driver = uc.Chrome(options=options)
+    return scrape_alibaba.scrape_alibaba_by_image(image_url)
     
-    try:
-        driver.get("https://spanish.alibaba.com/")
-        wait = WebDriverWait(driver, 5)  # Aumentar el tiempo de espera a 20 segundos
-        
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(random.uniform(2, 5))  # Pausa aleatoria para evitar detección
-
-        html = driver.page_source
-        with open("alibaba_source.html", "w", encoding="utf-8") as f:
-            f.write(html)
-        print("Código fuente guardado en alibaba_source.html")
-
-        close_gdpr_popup(driver,wait)
-        # Encontrar el botón de búsqueda por imagen
-        click_camera_button(driver, wait)
-        
-        # Subir la imagen 
-        upload_image(wait, image_url)
-        
-        # Esperar a que los resultados se carguen
-        time.sleep(5)
-        
-        soup = BeautifulSoup(driver.page_source, "html.parser")
-        productos = extract_product_info(soup)
-        
-
-    except Exception as e:
-        print("Error en el scraping:", e)
-
-    finally:
-        try:
-            if driver.service.process and driver.service.process.poll() is None:
-                driver.quit()
-                print("Driver cerrado correctamente.")
-            else:
-                print("El driver ya estaba cerrado.")
-        except Exception as e:
-            print("Error al cerrar el driver:", e)
-    
-    return JsonResponse(productos, safe=False)
-
-def close_gdpr_popup(driver, wait):
-    try:
-        # Esperar y hacer clic en el botón "Aceptar"
-        gdpr_button = wait.until(
-            EC.element_to_be_clickable((By.XPATH, "//div[contains(@class, 'gdpr-btn gdpr-agree-btn')]"))
-        )
-        gdpr_button.click()
-        print("Ventana de GDPR cerrada con éxito.")
-        time.sleep(2)  # Esperar antes de continuar
-    except Exception as e:
-        print("No se encontró la ventana GDPR o ya estaba cerrada:", e)
-
-
-def upload_image(wait, image_url):
-    try:
-        # Esperar a que aparezca el input donde se puede pegar la URL
-        url_input = wait.until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "input.image-upload-link-url"))
-        )
-
-        # Pegar la URL en el campo de entrada
-        url_input.clear()
-        url_input.send_keys(image_url)
-        print("URL de la imagen pegada con éxito.")
-
-        # Esperar a que el botón de búsqueda sea clickeable
-        search_button = wait.until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, "button.image-upload-link-search"))
-        )
-
-        # Hacer clic en el botón de búsqueda
-        search_button.click()
-        print("Búsqueda iniciada.")
-
-        time.sleep(5)  # Esperar a que se carguen los resultados
-
-    except Exception as e:
-        print("Error al pegar la URL de la imagen y buscar:", e)
-        raise
-
-
-def click_camera_button(driver, wait):
-
-    try:
-
-
-        camera_button = wait.until(
-            EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 'search-bar-picture')]"))
-        )
-
-        print("Botón de la cámara encontrado.")
-        
-        driver.execute_script("arguments[0].scrollIntoView();", camera_button)  # Asegurar visibilidad
-        time.sleep(2)  # Dar tiempo a la animación
-        
-        camera_button.click()
-        print("Botón de la cámara clickeado con éxito.")
-      
-    except Exception as e:
-        print("Error al encontrar el botón de la cámara:", e)
-        driver.save_screenshot("error_screenshot.png")  # Guardar una captura de pantalla para depuración
-        raise
-
-def filtrar_rating(texto):
-    # Busca el primer número decimal en el string
-    match = re.search(r'\d+\.\d+', texto)
-    if match:
-        return float(match.group())
-    return None
-
-def extract_product_info(soup, max_items=20):
-    productos = []
-    listas = soup.find_all("div", class_="fy23-search-card")
-    lista = listas[:max_items]
-    print("Encontrados", len(lista), "productos similares")
-    for producto in lista:
-        titulo = extract_title(producto)
-        url_producto = extract_url(producto)
-        precio = extract_price(producto)
-        orden_minima = extract_min_order(producto)
-        imagen = extract_image(producto)
-        empresa = extract_company(producto)
-        valoracion = extract_rating(producto)
-
-        productos.append({
-            "titulo": titulo,
-            "url": url_producto,
-            "precio": precio,
-            "orden_minima": orden_minima,
-            "imagen": imagen,
-            "empresa": empresa,
-            "valoracion": filtrar_rating(valoracion)
-        })
-    return productos
-
-def extract_min_order(producto):
-    orden_minima = producto.find("div", class_="search-card-m-sale-features__item")
-    if orden_minima:
-        orden_minima_texto = orden_minima.get_text(strip=True)
-        # Usar una expresión regular para extraer solo los dígitos
-        match = re.search(r'\d+', orden_minima_texto)
-        if match:
-            return match.group()
-    return "No disponible"
-
-def extract_title(producto):
-    titulo = producto.find("h2", class_="search-card-e-title")
-    return titulo.get_text(strip=True) if titulo else "Sin título"
-
-def extract_url(producto):
-    link_tag = producto.find("a", href=True)
-    if link_tag:
-        url = "https:" + link_tag["href"] if link_tag["href"].startswith("//") else link_tag["href"]
-        return url.replace(".com", ".es")
-    return None
-
-def extract_price(producto):
-    precio = producto.find("div", class_="search-card-e-price-main")
-    if precio:
-        precio_texto = precio.get_text(strip=True)
-
-        # Eliminar caracteres no numéricos excepto "." y ",", y quitar el símbolo de euro si está presente
-        precio_texto = re.sub(r"[^\d,.-]", "", precio_texto)
-
-        # Dividir si hay un rango de precios (ej: "164,77-408,51")
-        precios_eur = precio_texto.split("-")  
-
-        try:
-            if len(precios_eur) == 2:  # Si hay un rango de precios
-                min_eur = float(precios_eur[0].replace(",", ".").strip())  # Convertir , a .
-                max_eur = float(precios_eur[1].replace(",", ".").strip())
-                return f"€{min_eur} - €{max_eur}"
-            else:  # Si solo hay un precio único
-                precio_unico = float(precios_eur[0].replace(",", ".").strip())
-                return f"€{precio_unico}"
-        except ValueError:
-            return "No disponible"
-
-    return "No disponible"
-
-def extract_image(producto):
-    imagen = producto.find("img")
-    return imagen["src"] if imagen else "Sin imagen"
-
-def extract_company(producto):
-    empresa = producto.find("a", class_="search-card-e-company margin-bottom-8")
-    return empresa.get_text(strip=True) if empresa else "Sin empresa"
-
-def extract_rating(producto):
-    valoracion = producto.find("span", class_="search-card-e-review")
-    return valoracion.get_text(strip=True) if valoracion else "Sin valoración"
 
 
 @api_view(['GET'])
@@ -681,9 +195,8 @@ class AuthView(APIView):
 
             user = authenticate(request, username=username, password=password)
             if user is not None:
-                # (Opcional) Django login si quieres usar también sesión local
                 login(request, user)  
-
+                
                 # 1) Generar los tokens con SimpleJWT
                 refresh = RefreshToken.for_user(user)
                 access_token = str(refresh.access_token)
@@ -700,15 +213,14 @@ class AuthView(APIView):
                 }, status=status.HTTP_200_OK)
 
                 # 3) Guardar tokens en cookies seguras y HttpOnly
-                # Nota: secure=True solo si usas HTTPS en producción
                 response.set_cookie(
                     key='access_token',
                     value=access_token,
                     httponly=True,
                     secure=True,
-                    samesite='None',   # 'Lax' o 'None' si tu front y back están en distintos dominios
-                    max_age=3600,       # 1 hora (igual a tu ACCESS_TOKEN_LIFETIME)
-                    path='/',           # Ruta de la cookie
+                    samesite='None',   
+                    max_age=3600,       
+                    path='/',           
                 )
                 response.set_cookie(
                     key='refresh_token',
@@ -832,11 +344,11 @@ class PriceRangeViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-           item_id = self.request.query_params.get("item")
-           if(item_id):
-               return self.queryset.filter(item = item_id)
-           else:
-               return self.get_queryset()
+        item_id = self.request.query_params.get("item")
+        if item_id:
+            return self.queryset.filter(item=item_id)
+        else:
+            return super().get_queryset()
 
 
  #Metodo HTTP	URL	Acción	Método en la clase
@@ -967,7 +479,14 @@ class BudgetViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
-   
+
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        estado = self.request.data.get('estado', None)
+        if estado is not None:
+            instance.estado = estado
+        serializer.save(user=instance.user)
+
     @action(detail=True, methods=['get'], url_path='pdf')
     def pdf(self, request, pk=None):
         budget = self.get_object()
@@ -1070,6 +589,7 @@ class ListBudgetViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         lista_id = self.request.query_params.get('lista')  # `lista` viene del nombre del campo FK
+        
         if (lista_id):
             return self.queryset.filter(lista_id=lista_id)
         return self.queryset
@@ -1334,3 +854,53 @@ def compare_items(request):
         'attrs2': attrs2,
         'features': features,
     })
+
+
+
+class ItemInventarioViewSet(viewsets.ModelViewSet):
+    queryset = ItemInventario.objects.all()
+    serializer_class = ItemInventarioSerializer
+    permission_classes = [IsAuthenticated]
+
+class IncidenciaViewSet(viewsets.ModelViewSet):
+    queryset = Incidencia.objects.all()
+    serializer_class = IncidenciaSerializer 
+
+
+
+
+class PriceForecastView(APIView):
+    def get(self, request):
+        id_amazon = request.query_params.get('id_item_amazon')
+        id_alibaba = request.query_params.get('id_item_alibaba')
+        id_rango_alibaba = request.query_params.get('id_rango')
+
+        if not id_amazon and not id_alibaba:
+            return Response(
+                {"error": "Debe proporcionar al menos un id_amazon o id_alibaba"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+
+
+        response = {}
+
+        if id_amazon:
+            data = PriceHistory.objects.filter(
+                item_amazon=id_amazon
+            ).values('current_price', 'date')
+            response['amazon'] = forecast_price_json(list(data))
+
+        if id_alibaba:
+            data = PriceHistory.objects.filter(
+                item_alibaba=id_alibaba
+            ).values('current_price', 'date')
+            response['alibaba'] = forecast_price_json(list(data))
+        elif id_rango_alibaba!= None:
+            data = PriceHistory.objects.filter(
+                item_alibaba=id_alibaba,
+                rango=id_rango_alibaba
+            ).values('current_price', 'date')
+            response['alibaba'] = forecast_price_json(list(data))
+
+        return Response(response)
